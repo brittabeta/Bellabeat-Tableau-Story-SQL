@@ -2,7 +2,7 @@
 Case study of Bellabeat activity and sleep monitoring device data  
 # Presentation
 Tableau story with scenario, sharing of analysis, recommendations based on trends and insights
-See at: ___
+See at: https://public.tableau.com/views/BellabeatDataAnalysisCaseStudy_16669955669160/Story1?:language=en-US&:display_count=n&:origin=viz_share_link
 # SQL Details
 SQL queries used with BigQuery to analyze data
 # Resources and Appendix
