@@ -1,15 +1,18 @@
 --ChangeLog and CleaningLog--
----Excel actions:
-Sleep spreadsheet: Changed data type in sleep day column from datetime when all times listed as 12:00 AM to date format
-Sleep spreadsheet: Added column for time in bed not sleeping by subtracting minutes sleeping from minutes in bed
-Sleep spreadsheet: Checked for invalid data using MIN on in bed not sleeping minutes, output = 0, no sleep time exceeds time in bed
-Sleep spreadsheets: MIN, MAX, AVERAGE, MEDIAN, MODE on all minute columns and number of sleep records column, all within a reasonable range of values
-Activity spreadsheet: Changed data type in activity date column from datetime when all times listed as 12:00 AM to date format
-Activity spreadsheet: used =COUNTIF(D:D,D2<>E2) on total distance and tracker distance columns, output 0, tracker distance a duplicate column, removed column
-Activity spreadsheet: used =SUM on all distance subcategories then compared with total distance column using =COUNTIF(Q:Q,Q>0.1), output 0, subcategories valid
-Activity spreadsheet: created total time column using =SUM on time subcategories, then using =MAX output 1440 minutes = 24 hours, =MIN output 2, not negative, subcategories valid
----BigQuery actions:
-daily_activity dataset saved as activity
+
+---Excel actions---
+
+--Sleep spreadsheet: Changed data type in sleep day column from datetime when all times listed as 12:00 AM to date format
+--Sleep spreadsheet: Added column for time in bed not sleeping by subtracting minutes sleeping from minutes in bed
+--Sleep spreadsheet: Checked for invalid data using MIN on in bed not sleeping minutes, output = 0, no sleep time exceeds time in bed
+--Sleep spreadsheets: MIN, MAX, AVERAGE, MEDIAN, MODE on all minute columns and number of sleep records column, all within a reasonable range of values
+--Activity spreadsheet: Changed data type in activity date column from datetime when all times listed as 12:00 AM to date format
+--Activity spreadsheet: used =COUNTIF(D:D,D2<>E2) on total distance and tracker distance columns, output 0, tracker distance a duplicate column, removed column
+--Activity spreadsheet: used =SUM on all distance subcategories then compared with total distance column using =COUNTIF(Q:Q,Q>0.1), output 0, subcategories valid
+--Activity spreadsheet: created total time column using =SUM on time subcategories, then using =MAX output 1440 minutes = 24 hours, =MIN output 2, not negative, subcategories valid
+
+---BigQuery actions: daily_activity dataset saved as activity_v1---
+
 --Schema: all fields have appropriate type
 --Unique ID inspection
 ---SELECT distinct Id FROM `case2-365021.daily_activity.activity_v1` -> 33 unique Id’s in Id field
@@ -17,9 +20,14 @@ daily_activity dataset saved as activity
 ---SELECT LENGTH(Id) FROM `case2-365021.daily_activity.activity_id` -> all Id are 10 characters in length, length matches expected
 --Check for duplicates
 ---SELECT (select count(1) from (select distinct * from `case2-365021.daily_activity.activity_v1`)) as distinct_rows, (select count(1) from `case2-365021.daily_activity.activity_v1`) as total_rows -> Row 1 distinct_rows 940 total_rows 940 = no duplicates
----Clean field TotalTime which includes SedentaryMinutes and LightlyActiveMinutes, remove SedentaryMinutes and LightlyActiveMinutes to coincide with exercise of at least “moderate intensity”
-----SELECT Id, ActivityDate, TotalSteps, TotalDistance, (VeryActiveMinutes + FairlyActiveMinutes) AS TotalTime, LoggedActivitiesDistance, VeryActiveDistance, ModeratelyActiveDistance, LightActiveDistance, SedentaryActiveDistance, VeryActiveMinutes, FairlyActiveMinutes, LightlyActiveMinutes, SedentaryMinutes, Calories   FROM `case2-365021.daily_activity.activity_v1` -> Save table as activity
-Sleep dataset in BigQuery
+--Inspect TotalTime values
+---SELECT TotalTime, SUM(VeryActiveMinutes + FairlyActiveMinutes + LightlyActiveMinutes), SUM(VeryActiveMinutes + FairlyActiveMinutes), SUM(VeryActiveMinutes + FairlyActiveMinutes + LightlyActiveMinutes + SedentaryMinutes)  FROM `case2-365021.daily_activity.activity` GROUP BY TotalTime, Id LIMIT 10
+---TotalTime includes SedentaryMinutes, remove SedentaryMinutes from TotalTime
+---SELECT Id, ActivityDate, TotalSteps, TotalDistance, (VeryActiveMinutes + FairlyActiveMinutes + LightlyActiveMinutes) AS TotalTime, LoggedActivitiesDistance, VeryActiveDistance, ModeratelyActiveDistance, LightActiveDistance, SedentaryActiveDistance, VeryActiveMinutes, FairlyActiveMinutes, LightlyActiveMinutes, SedentaryMinutes, Calories   FROM `case2-365021.daily_activity.activity_v1` -> save table as activity
+---Note per metadata “moderate intensity” threshold in time data is >= FairlyActiveMinutes, therefore time of moderate intensity exercise = sum of VeryActiveMinutes + FairlyActiveMinutes
+
+---BigQuery Actions: sleep dataset sleep table---
+
 --Schema: all fields have appropriate type
 --Unique ID inspection
 ---SELECT distinct Id FROM `case2-365021.sleep.sleep` -> 24 unique Id’s in Id field
@@ -28,7 +36,8 @@ Sleep dataset in BigQuery
 --Check for duplicate 
 ---SELECT (select count(1) from (select distinct * from `case2-365021.sleep.sleep`)) as distinct_rows, (select count(1) from `case2-365021.sleep.sleep`) as total_rows -> Output: Row 1 distinct_rows 410 total_rows 413 = 3 duplicates
 ----Remove duplicates: SELECT distinct * from `case2-365021.sleep.sleep` -> Output: 410 distinct rows, save as table sleep_v2, delete sleep table, SELECT * FROM `case2-365021.sleep.sleep_v2` -> save as table sleep
-Activity and Sleep datasets
+
+---BigQuery Actions: activity and sleep datasets and tables---
 --change Id columns to same data type
 ---SELECT CAST(Id AS STRING) AS Id FROM `case2-365021.sleep.sleep_id` -> save table as sleep_id_v2
 --use INNER JOIN to show matching Id/users in both sleep and activity data
