@@ -1,0 +1,59 @@
+SELECT EXTRACT(WEEK from ActivityDate) AS Week, sum(VeryActiveMinutes + FairlyActiveMinutes) AS total_moderate_week, Id FROM `case2-365021.daily_activity.activity` GROUP BY Week, Id
+--active_modtotal_for_weekandid = individual weekly mod activity
+SELECT avg(total_moderate_week) AS avg_mod_week_all, Week FROM `case2-365021.daily_activity.active_modtotal_for_weekandid` GROUP BY Week
+--save table active_modavg_forweek = all user weekly mod activity
+SELECT SleepDay, sum(TotalMinutesAsleep) AS time_asleep, Id FROM `case2-365021.sleep.sleep` GROUP BY SleepDay, Id
+--save as sleep_asleep_for_dayandid = individual daily sleep
+SELECT SleepDay, avg(time_asleep) AS time_asleep_all FROM `case2-365021.sleep.sleep_asleep_for_dayandid ` GROUP BY SleepDay
+--save as sleep_asleep_for_day = all user daily sleep
+--quantify satisfaction of recommendations
+--active_modavg_forweek = all user weekly mod activity
+SELECT COUNT(avg_mod_week_all)/5*100 AS percent_weeks_met FROM `case2-365021.daily_activity.active_modavg_forweek` WHERE avg_mod_week_all >= 150
+-- percent_weeks_met = 100% 
+--sleep_asleep_for_day = all user daily sleep
+SELECT COUNT(time_asleep_all)/31*100 AS percent_days_met FROM `case2-365021.sleep.sleep_asleep_for_day` WHERE time_asleep_all >= 420
+-- percent_days_met = 51.61%
+--active_modtotal_for_weekandid = individual weekly mod activity
+SELECT COUNT(total_moderate_week)/154*100 AS percent_weeks_met FROM `case2-365021.daily_activity.active_modtotal_for_weekandid` WHERE total_moderate_week >= 150
+-- percent_weeks_met = 53.896%
+--sleep_asleep_for_dayandid = individual daily sleep
+SELECT COUNT(time_asleep)/410*100 AS percent_days_met FROM `case2-365021.sleep.sleep_asleep_for_dayandid ` WHERE time_asleep >= 420
+-- percent_days_met = 55.85%
+--distribution of people getting adequate sleep use sleep_asleep_for_dayandid
+--obtain percentiles 
+SELECT percentiles[offset(5)] AS p5, percentiles[offset(50)] AS p50, percentiles[offset(95)] AS p95 FROM (
+  SELECT approx_quantiles(time_asleep, 100) AS percentiles FROM `case2-365021.sleep.sleep_asleep_for_dayandid ` 
+)
+--save as sleep_5_50_95 = the percentiles of time asleep minutes
+--count in each percentile and count >= 420 for each id/individual
+SELECT COUNTIF(time_asleep <=166) AS count_p5, COUNTIF(time_asleep >=420) AS n420, COUNTIF(time_asleep >432 AND time_asleep <591) AS count_p50, COUNTIF(time_asleep >=591) AS count_p95, Id, FROM `case2-365021.sleep.sleep_asleep_for_dayandid ` GROUP BY Id 
+--save as sleep_5_420_50_95, count days <=5th,  >= 420, >50th and <95th, >=95th 
+--distribution of people getting adequate exercise use active_modtotal_for_weekandid
+--obtain percentiles
+SELECT percentiles[offset(5)] AS p5, percentiles[offset(50)] AS p50, percentiles[offset(95)] AS p95 FROM (
+  SELECT approx_quantiles(total_moderate_week, 100) AS percentiles FROM `case2-365021.daily_activity.active_modtotal_for_weekandid`
+)
+--save as active_5_50_95 = the percentiles of moderate activity minutes weekly
+--count in each percentile and count >= 150 for each id/individual
+SELECT COUNTIF(total_moderate_week =0) AS count_p5, COUNTIF(total_moderate_week >=150) AS n150, COUNTIF(total_moderate_week >175 AND total_moderate_week <597) AS count_p50, COUNTIF(total_moderate_week >=597) AS count_p95, Id, FROM `case2-365021.daily_activity.active_modtotal_for_weekandid` GROUP BY Id 
+--save as active_5_150_50_95, count weeks <=5th,  >= 150, >50th and <95th, >=95th
+-- link Time user behavior with recommendation satisfaction 
+--create column for calculation of number of days used 
+SELECT Id, min(ActivityDate) AS min_date, max(ActivityDate) AS max_date, "activity" AS use_type, FROM `case2-365021.daily_activity.activity` GROUP BY Id
+SELECT  Id, min(SleepDay) AS min_date, max(SleepDay) AS max_date, "sleep" AS use_type FROM `case2-365021.sleep.sleep` GROUP BY Id
+--save as activity_number and sleep_number
+--add number_of_days_used column 
+SELECT Id, use_type, DATE_DIFF(max_date, min_date, DAY) AS number_of_days_used  FROM `case2-365021.daily_activity.activity_number` GROUP BY Id, use_type, number_of_days_used 
+SELECT  Id, use_type, DATE_DIFF(max_date, min_date, DAY) AS number_of_days_used  FROM `case2-365021.sleep.sleep_number` GROUP BY Id, use_type, number_of_days_used
+--save as activity_number2 and sleep_number2
+--prepare to query for relationships between behavior and recommendations
+--JOIN activity_number2 with active_5_150_50_95 and save as active_counts_daysused
+SELECT a.Id, a.use_type, a.number_of_days_used,b.Id, b.n150 AS n150active, b.count_p5 AS count_p5active, b.count_p50 AS count_p50active, b.count_p95 AS count_p95active FROM `case2-365021.daily_activity.activity_number2` AS a JOIN case2-365021.daily_activity.active_5_150_50_95 AS b ON a.Id = b.Id
+--JOIN sleep_number2 with sleep_5_420_50_95 and save as sleep_counts_daysused
+SELECT a.Id, a.use_type, a.number_of_days_used,b.Id, b.n420 AS n420sleep, b.count_p5 AS count_p5sleep, b.count_p50 AS count_p50sleep, b.count_p95 AS count_p95sleep FROM `case2-365021.sleep.sleep_number2` AS a JOIN case2-365021.sleep.sleep_5_420_50_95 AS b ON a.Id = b.Id
+--JOIN active_counts_daysused and sleep_counts_daysused = count of recommended sleep and activity, percentiles, and number of days used for each individual, save as active_sleep_counts_daysused
+SELECT a.Id, a.number_of_days_used AS number_of_days_used_active, a.n150active, a.count_p5active, a.count_p50active, a.count_p95active, b.Id, b.number_of_days_used AS number_of_days_used_sleep, b.n420sleep, b.count_p5sleep, b.count_p50sleep, b.count_p95sleep FROM `case2-365021.compare.active_counts_daysused` AS a JOIN case2-365021.compare.sleep_counts_daysused AS b ON a.Id = b.Id
+--query Id’s with >or=4 weeks of activity as recommended, save as active_4_150
+SELECT * FROM `case2-365021.compare.active_sleep_counts_daysused` WHERE n150active >= 4
+--query Id’s with >or=15 days of sleep as recommended, save as sleep_15_420
+SELECT * FROM `case2-365021.compare.active_sleep_counts_daysused` WHERE n420sleep >= 15
