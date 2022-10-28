@@ -25,6 +25,7 @@
 ---TotalTime includes SedentaryMinutes, remove SedentaryMinutes from TotalTime
 ---SELECT Id, ActivityDate, TotalSteps, TotalDistance, (VeryActiveMinutes + FairlyActiveMinutes + LightlyActiveMinutes) AS TotalTime, LoggedActivitiesDistance, VeryActiveDistance, ModeratelyActiveDistance, LightActiveDistance, SedentaryActiveDistance, VeryActiveMinutes, FairlyActiveMinutes, LightlyActiveMinutes, SedentaryMinutes, Calories   FROM `case2-365021.daily_activity.activity_v1` -> save table as activity
 ---Note per metadata “moderate intensity” threshold in time data is >= FairlyActiveMinutes, therefore time of moderate intensity exercise = sum of VeryActiveMinutes + FairlyActiveMinutes
+---Prepare for Tableau if needed for ease: Excel – TotalTime to TotalModTime using =E2-M2 to subtract LightlyActiveMinutes as well
 
 ---BigQuery Actions: sleep dataset sleep table---
 
